@@ -906,3 +906,53 @@ mod x86_tests {
         }
     }
 }
+
+// --------
+// C++ Wrappers
+
+static NTTPLANS32: Mutex<Vec<prime32::Plan>>  = Mutex::new(Vec::new());
+static NTTPLANS64: Mutex<Vec<prime64::Plan>>  = Mutex::new(Vec::new());
+
+#[cxx::bridge]
+mod ffi {
+    #[namespace = "concrete_fft"]
+    extern "Rust" {
+        fn stacksize(N: usize) -> usize;
+        fn fwd(data: &mut [f64], scratch_memory: &mut [u8]);
+        fn inv(data: &mut [f64], scratch_memory: &mut [u8]);
+    }
+}
+
+fn initntt(N:usize ,q: u64) -> usize {
+    let mut plans = NTTPLANS32.lock().unwrap();
+    let plan = prime64::Plan::try_new(N, q).unwrap();
+    plans.push(plan);
+    return plans.len() as usize - 1;
+}
+
+fn initntt(N:usize ,q: u32) -> usize {
+    let mut plans = NTTPLANS32.lock().unwrap();
+    let plan = prime64::Plan::try_new(N, q).unwrap();
+    plans.push(plan);
+    return plans.len() as usize - 1;
+}
+
+fn nttforward(a: &mut [u64], plan: usize) {
+    let mut plans = NTTPLANS64.lock().unwrap();
+    plans[plan].forward(&mut a);
+}
+
+fn nttforward(a: &mut [u32], plan: usize) {
+    let mut plans = NTTPLANS32.lock().unwrap();
+    plans[plan].forward(&mut a);
+}
+
+fn nttinverse(a: &mut [u64], plan: usize) {
+    let mut plans = NTTPLANS64.lock().unwrap();
+    plans[plan].inverse(&mut a);
+}
+
+fn nttinverse(a: &mut [u32], plan: usize) {
+    let mut plans = NTTPLANS32.lock().unwrap();
+    plans[plan].inverse(&mut a);
+}
